@@ -211,7 +211,7 @@ const GameCanvas = ({
                 const newHealth = enemy.health - projectile.damage;
                 
                 if (newHealth <= 0) {
-                  onScoreUpdate(prev => prev + enemy.points);
+onScoreUpdate(gameState.score + enemy.points);
                   onComboUpdate(prev => {
                     const newCombo = prev + 1;
                     
