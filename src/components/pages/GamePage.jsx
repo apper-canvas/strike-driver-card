@@ -103,7 +103,7 @@ const GamePage = () => {
               gameState={gameState}
 onScoreUpdate={(newScore) => setGameState(prev => ({ ...prev, score: newScore }))}
               onHealthUpdate={setHealth}
-              onComboUpdate={(update) => setGameState(prev => ({ ...prev, combo: update(prev.combo) }))}
+              onComboUpdate={(newCombo) => setGameState(prev => ({ ...prev, combo: newCombo }))}
               onGameOver={handleGameOver}
               isPaused={gameState.isPaused}
             />
