@@ -1,0 +1,57 @@
+@import "react-toastify/dist/ReactToastify.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Rajdhani", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Orbitron", sans-serif;
+}
+
+.Toastify__toast-container {
+  z-index: 9999;
+}
+
+.Toastify__toast {
+  font-family: "Rajdhani", sans-serif;
+  border-radius: 8px;
+  padding: 12px 16px;
+  min-height: 48px;
+}
+
+.Toastify__toast--success {
+  background: linear-gradient(135deg, #00FF88 0%, #00D4FF 100%);
+}
+
+.Toastify__toast--error {
+  background: linear-gradient(135deg, #FF1744 0%, #FF4500 100%);
+}
+
+.Toastify__toast--warning {
+  background: linear-gradient(135deg, #FFA500 0%, #FFD700 100%);
+}
+
+.glow-primary {
+  box-shadow: 0 0 20px rgba(0, 212, 255, 0.6);
+}
+
+.glow-secondary {
+  box-shadow: 0 0 20px rgba(255, 69, 0, 0.6);
+}
+
+.glow-accent {
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+}
