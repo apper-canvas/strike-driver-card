@@ -360,18 +360,18 @@ const ctx = canvas.getContext("2d");
         ctx.restore();
       });
       
-      // Render enemies as detailed rockets with engine trails
-enemies.forEach(enemy => {
+// Render enemies as detailed rockets with engine trails
+      enemies.forEach(enemy => {
         // Smooth rotation angle based on movement direction
         const targetAngle = Math.atan2(enemy.vy || 0, enemy.vx || 0) + Math.PI / 2;
         enemy.angle = enemy.angle || targetAngle;
         
         // Smooth angle interpolation for fluid rotation
-const normalizedDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+        const angleDiff = targetAngle - enemy.angle;
+        const normalizedDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
         enemy.angle += normalizedDiff * 0.15;
         
         // Create enhanced engine trail particles
-        if (Math.random() < 0.9) {
         if (Math.random() < 0.9) {
           const engineTrail = createEngineTrail(
             enemy.x - Math.sin(enemy.angle) * (enemy.size + 5),
@@ -380,7 +380,8 @@ const normalizedDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
           );
           particles.push(...engineTrail);
         }
-// Draw rocket with rotation
+        
+        // Draw rocket with rotation
         drawRocket(ctx, enemy.x, enemy.y, enemy.size, enemy.color, enemy.angle);
         
         // Enhanced health bar with glow effect
@@ -402,11 +403,11 @@ const normalizedDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
       });
       
 // Enhanced player rocket with smooth rotation and dynamic effects
-      const targetPlayerAngle = Math.atan2(player.vy || 0, player.vx || 0) + Math.PI / 2;
+      const targetPlayerAngle = 0; // Initialize target angle for player
       player.angle = player.angle || targetPlayerAngle;
       
       // Smooth player rotation with interpolation
-const playerAngleDiff = targetPlayerAngle - player.angle;
+      const playerAngleDiff = targetPlayerAngle - player.angle;
       const normalizedPlayerDiff = Math.atan2(Math.sin(playerAngleDiff), Math.cos(playerAngleDiff));
       player.angle += normalizedPlayerDiff * 0.2;
       
