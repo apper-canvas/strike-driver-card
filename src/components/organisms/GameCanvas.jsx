@@ -367,7 +367,7 @@ const GameCanvas = ({
     setEnemies(prev => [...prev, enemy]);
   }, [enemyTypes, player]);
   
-  const createExplosion = useCallback((x, y, z, color) => {
+const handleExplosion = useCallback((x, y, z, color) => {
     const explosionParticles = createExplosion(x, y, z, color);
     setParticles(prev => [...prev, ...explosionParticles]);
   }, []);
@@ -447,7 +447,7 @@ const GameCanvas = ({
             }
             return newHealth;
           });
-          createExplosion(enemy.x, enemy.y, enemy.z, enemy.color);
+handleExplosion(enemy.x, enemy.y, enemy.z, enemy.color);
           return false;
         }
         return !isOutOfBounds(enemy.x, enemy.y, canvasBounds.width, canvasBounds.height);
@@ -490,7 +490,7 @@ const GameCanvas = ({
                     return newCombo;
                   });
                   
-                  createExplosion(enemy.x, enemy.y, enemy.z, enemy.color);
+handleExplosion(enemy.x, enemy.y, enemy.z, enemy.color);
                   return null;
                 }
                 
@@ -527,7 +527,7 @@ const GameCanvas = ({
     isPaused, 
     fireProjectile, 
     spawnEnemy, 
-    createExplosion,
+handleExplosion,
     onScoreUpdate,
     onHealthUpdate,
     onComboUpdate,
