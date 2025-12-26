@@ -46,12 +46,42 @@ h1, h2, h3, h4, h5, h6 {
 
 .glow-primary {
   box-shadow: 0 0 20px rgba(0, 212, 255, 0.6);
+  animation: glow-pulse-primary 2s ease-in-out infinite alternate;
 }
 
 .glow-secondary {
   box-shadow: 0 0 20px rgba(255, 69, 0, 0.6);
+  animation: glow-pulse-secondary 2s ease-in-out infinite alternate;
 }
 
 .glow-accent {
   box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+  animation: glow-pulse-accent 2s ease-in-out infinite alternate;
+}
+
+@keyframes glow-pulse-primary {
+  from { box-shadow: 0 0 20px rgba(0, 212, 255, 0.4); }
+  to { box-shadow: 0 0 30px rgba(0, 212, 255, 0.8); }
+}
+
+@keyframes glow-pulse-secondary {
+  from { box-shadow: 0 0 20px rgba(255, 69, 0, 0.4); }
+  to { box-shadow: 0 0 30px rgba(255, 69, 0, 0.8); }
+}
+
+@keyframes glow-pulse-accent {
+  from { box-shadow: 0 0 20px rgba(255, 215, 0, 0.4); }
+  to { box-shadow: 0 0 30px rgba(255, 215, 0, 0.8); }
+}
+
+/* Smooth 60fps animations */
+.animate-smooth {
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.motion-blur {
+  filter: blur(0.5px);
+  transition: filter 0.1s ease-out;
 }

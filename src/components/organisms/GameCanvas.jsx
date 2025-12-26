@@ -1,15 +1,15 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useGameLoop } from "@/hooks/useGameLoop";
 import enemyService from "@/services/api/enemyService";
 import { 
+  calculateVelocityTowardsPlayer, 
   checkCollision, 
-  isOutOfBounds, 
+  createEngineTrail, 
+  createExplosion, 
+  drawRocket, 
+  generateId, 
   getRandomSpawnPosition, 
-  calculateVelocityTowardsPlayer,
-  generateId,
-  drawRocket,
-  createExplosion,
-  createEngineTrail
+  isOutOfBounds 
 } from "@/utils/gameHelpers";
 
 const GameCanvas = ({ 
@@ -104,34 +104,39 @@ const GameCanvas = ({
     setEnemies(prev => [...prev, newEnemy]);
   }, [enemyTypes, player]);
 
-  const createExplosion = useCallback((x, y, color) => {
-    const particleCount = 20;
+const createExplosion = useCallback((x, y, color) => {
+    const particleCount = 30;
     const newParticles = [];
     
     for (let i = 0; i < particleCount; i++) {
-      const angle = (Math.PI * 2 * i) / particleCount;
-      const speed = 2 + Math.random() * 3;
+      const angle = (Math.PI * 2 * i) / particleCount + (Math.random() - 0.5) * 0.3;
+      const speed = 1.5 + Math.random() * 4;
+      const size = 2 + Math.random() * 4;
       newParticles.push({
         id: generateId(),
-        x,
-        y,
+        x: x + (Math.random() - 0.5) * 5,
+        y: y + (Math.random() - 0.5) * 5,
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed,
         life: 1,
-        color
+        maxLife: 1,
+        decay: 0.015 + Math.random() * 0.01,
+        size: size,
+        initialSize: size,
+        color,
+        type: 'explosion'
       });
     }
     
     setParticles(prev => [...prev, ...newParticles]);
   }, []);
-
   const updateGame = useCallback((deltaTime) => {
     if (isPaused) return;
     
     const canvas = canvasRef.current;
     if (!canvas) return;
     
-    const dt = deltaTime / 16.67;
+const dt = Math.min(deltaTime / 16.67, 2); // Cap delta time for smooth animations
     
     setPlayer(prev => {
       let newX = prev.x;
@@ -292,18 +297,37 @@ const ctx = canvas.getContext("2d");
         ctx.fillRect(x, y, 1, 1);
       }
       
-      // Advanced particle system
+// Enhanced particle system with smooth interpolation
       particles.forEach((particle, index) => {
         ctx.save();
-        ctx.globalAlpha = particle.life;
+        
+        // Smooth alpha transition with easing
+        const lifeRatio = particle.life / (particle.maxLife || 1);
+        const easedAlpha = lifeRatio * lifeRatio * (3 - 2 * lifeRatio); // Smoothstep
+        ctx.globalAlpha = easedAlpha;
         
         if (particle.type === 'explosion') {
-          const gradient = ctx.createRadialGradient(particle.x, particle.y, 0, particle.x, particle.y, particle.size);
+          // Enhanced explosion with size animation
+          const sizeMultiplier = 1 + (1 - lifeRatio) * 0.5;
+          const currentSize = particle.size * sizeMultiplier;
+          
+          const gradient = ctx.createRadialGradient(
+            particle.x, particle.y, 0, 
+            particle.x, particle.y, currentSize * 1.5
+          );
           gradient.addColorStop(0, particle.color);
-          gradient.addColorStop(0.5, particle.color.replace('1)', '0.6)'));
+          gradient.addColorStop(0.4, particle.color.replace('1)', '0.8)'));
+          gradient.addColorStop(0.8, particle.color.replace('1)', '0.3)'));
           gradient.addColorStop(1, 'rgba(0,0,0,0)');
           ctx.fillStyle = gradient;
-          ctx.fillRect(particle.x - particle.size, particle.y - particle.size, particle.size * 2, particle.size * 2);
+          
+          // Motion blur effect
+          ctx.shadowColor = particle.color;
+          ctx.shadowBlur = currentSize * 0.3;
+          
+          ctx.beginPath();
+          ctx.arc(particle.x, particle.y, currentSize, 0, Math.PI * 2);
+          ctx.fill();
         } else if (particle.type === 'trail') {
           ctx.fillStyle = particle.color;
           ctx.fillRect(particle.x - 1, particle.y - 1, 2, 2);
@@ -337,22 +361,27 @@ const ctx = canvas.getContext("2d");
       });
       
       // Render enemies as detailed rockets with engine trails
-      enemies.forEach(enemy => {
-        // Calculate rotation angle based on movement direction
-        const angle = Math.atan2(enemy.vy || 0, enemy.vx || 0) + Math.PI / 2;
+enemies.forEach(enemy => {
+        // Smooth rotation angle based on movement direction
+        const targetAngle = Math.atan2(enemy.vy || 0, enemy.vx || 0) + Math.PI / 2;
+        enemy.angle = enemy.angle || targetAngle;
         
-        // Create engine trail particles
-        if (Math.random() < 0.8) {
+        // Smooth angle interpolation for fluid rotation
+const normalizedDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+        enemy.angle += normalizedDiff * 0.15;
+        
+        // Create enhanced engine trail particles
+        if (Math.random() < 0.9) {
+        if (Math.random() < 0.9) {
           const engineTrail = createEngineTrail(
-            enemy.x - Math.sin(angle) * (enemy.size + 5),
-            enemy.y + Math.cos(angle) * (enemy.size + 5),
+            enemy.x - Math.sin(enemy.angle) * (enemy.size + 5),
+            enemy.y + Math.cos(enemy.angle) * (enemy.size + 5),
             enemy.color
           );
           particles.push(...engineTrail);
         }
-        
-        // Draw rocket with rotation
-        drawRocket(ctx, enemy.x, enemy.y, enemy.size, enemy.color, angle);
+// Draw rocket with rotation
+        drawRocket(ctx, enemy.x, enemy.y, enemy.size, enemy.color, enemy.angle);
         
         // Enhanced health bar with glow effect
         const healthBarWidth = enemy.size * 2.5;
@@ -372,24 +401,33 @@ const ctx = canvas.getContext("2d");
         ctx.restore();
       });
       
-      // Enhanced player rocket with dynamic engine effects
-      const playerAngle = Math.atan2(player.vy || 0, player.vx || 0) + Math.PI / 2;
+// Enhanced player rocket with smooth rotation and dynamic effects
+      const targetPlayerAngle = Math.atan2(player.vy || 0, player.vx || 0) + Math.PI / 2;
+      player.angle = player.angle || targetPlayerAngle;
       
-      // Player engine trail
-      if (Math.random() < 0.9) {
+      // Smooth player rotation with interpolation
+const playerAngleDiff = targetPlayerAngle - player.angle;
+      const normalizedPlayerDiff = Math.atan2(Math.sin(playerAngleDiff), Math.cos(playerAngleDiff));
+      player.angle += normalizedPlayerDiff * 0.2;
+      
+      // Enhanced player engine trail with dynamic intensity
+      const speed = Math.sqrt((player.vx || 0) ** 2 + (player.vy || 0) ** 2);
+      const trailIntensity = Math.min(speed / 10, 1);
+      
+      if (Math.random() < 0.95) {
         const engineTrail = createEngineTrail(
-          player.x - Math.sin(playerAngle) * 35,
-          player.y + Math.cos(playerAngle) * 35,
-          "#00D4FF"
+          player.x - Math.sin(player.angle) * 35,
+          player.y + Math.cos(player.angle) * 35,
+          "#00D4FF",
+          trailIntensity
         );
         particles.push(...engineTrail);
       }
       
-      // Draw player rocket
+// Draw player rocket
       ctx.save();
       ctx.translate(player.x, player.y);
-      ctx.rotate(playerAngle);
-      
+      ctx.rotate(player.angle);
       // Rocket body
       ctx.shadowBlur = 25;
       ctx.shadowColor = "#00D4FF";

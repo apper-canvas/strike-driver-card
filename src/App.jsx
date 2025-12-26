@@ -6,7 +6,7 @@ function App() {
   return (
     <>
       <RouterProvider router={router} />
-      <ToastContainer
+<ToastContainer
         position="top-right"
         autoClose={3000}
         hideProgressBar={false}
@@ -17,7 +17,13 @@ function App() {
         draggable
         pauseOnHover
         theme="dark"
+        transition="slide"
         style={{ zIndex: 9999 }}
+        toastStyle={{
+          borderRadius: '12px',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255, 255, 255, 0.1)'
+        }}
       />
     </>
   );
