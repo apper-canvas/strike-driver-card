@@ -36,5 +36,78 @@ export const calculateVelocityTowardsPlayer = (enemy, player, speed) => {
 };
 
 export const generateId = () => {
-  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+};
+
+// Draw detailed rocket sprite with rotation
+export const drawRocket = (ctx, x, y, size, color, angle = 0) => {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+  
+  // Rocket body
+  ctx.shadowBlur = 15;
+  ctx.shadowColor = color;
+  ctx.fillStyle = color;
+  ctx.fillRect(-size * 0.4, -size, size * 0.8, size * 1.5);
+  
+  // Rocket nose cone
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(0, -size);
+  ctx.lineTo(-size * 0.4, -size * 0.6);
+  ctx.lineTo(size * 0.4, -size * 0.6);
+  ctx.closePath();
+  ctx.fill();
+  
+  // Rocket fins
+  const finColor = color.replace('rgb', 'rgba').replace(')', ', 0.8)');
+  ctx.fillStyle = finColor;
+  ctx.fillRect(-size * 0.6, size * 0.3, size * 0.2, size * 0.5);
+  ctx.fillRect(size * 0.4, size * 0.3, size * 0.2, size * 0.5);
+  
+  // Engine glow
+  ctx.shadowBlur = 10;
+  ctx.shadowColor = color;
+  ctx.fillStyle = color;
+  ctx.fillRect(-size * 0.3, size * 0.5, size * 0.6, size * 0.3);
+  
+  ctx.restore();
+};
+
+// Create explosion particle effect
+export const createExplosion = (x, y, color) => {
+  const particles = [];
+  for (let i = 0; i < 15; i++) {
+    const angle = (Math.PI * 2 * i) / 15;
+    const velocity = Math.random() * 3 + 1;
+    particles.push({
+      x: x,
+      y: y,
+      vx: Math.cos(angle) * velocity,
+      vy: Math.sin(angle) * velocity,
+      life: 1,
+      color: color,
+      size: Math.random() * 8 + 4,
+      type: 'explosion'
+    });
+  }
+  return particles;
+};
+
+// Create engine trail particles
+export const createEngineTrail = (x, y, color) => {
+  const particles = [];
+  for (let i = 0; i < 3; i++) {
+    particles.push({
+      x: x + (Math.random() - 0.5) * 4,
+      y: y + (Math.random() - 0.5) * 4,
+      vx: (Math.random() - 0.5) * 1,
+      vy: Math.random() * 2 + 1,
+      life: Math.random() * 0.5 + 0.5,
+      color: color,
+      type: 'trail'
+    });
+  }
+  return particles;
 };

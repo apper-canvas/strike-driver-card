@@ -6,7 +6,10 @@ import {
   isOutOfBounds, 
   getRandomSpawnPosition, 
   calculateVelocityTowardsPlayer,
-  generateId 
+  generateId,
+  drawRocket,
+  createExplosion,
+  createEngineTrail
 } from "@/utils/gameHelpers";
 
 const GameCanvas = ({ 
@@ -274,76 +277,154 @@ onScoreUpdate(gameState.score + enemy.points);
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    
-    const ctx = canvas.getContext("2d");
+const ctx = canvas.getContext("2d");
     
     const render = () => {
       ctx.fillStyle = "#0F0F1E";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       
+      // Enhanced starfield with twinkling effect
       for (let i = 0; i < 50; i++) {
         const x = (i * 123) % canvas.width;
         const y = (i * 456) % canvas.height;
-        ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+        const twinkle = Math.sin(Date.now() * 0.001 + i) * 0.3 + 0.7;
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.3 * twinkle})`;
         ctx.fillRect(x, y, 1, 1);
       }
       
-      particles.forEach(particle => {
+      // Advanced particle system
+      particles.forEach((particle, index) => {
         ctx.save();
         ctx.globalAlpha = particle.life;
-        ctx.fillStyle = particle.color;
-        ctx.fillRect(particle.x - 2, particle.y - 2, 4, 4);
+        
+        if (particle.type === 'explosion') {
+          const gradient = ctx.createRadialGradient(particle.x, particle.y, 0, particle.x, particle.y, particle.size);
+          gradient.addColorStop(0, particle.color);
+          gradient.addColorStop(0.5, particle.color.replace('1)', '0.6)'));
+          gradient.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = gradient;
+          ctx.fillRect(particle.x - particle.size, particle.y - particle.size, particle.size * 2, particle.size * 2);
+        } else if (particle.type === 'trail') {
+          ctx.fillStyle = particle.color;
+          ctx.fillRect(particle.x - 1, particle.y - 1, 2, 2);
+        } else {
+          ctx.fillStyle = particle.color;
+          ctx.fillRect(particle.x - 2, particle.y - 2, 4, 4);
+        }
+        
         ctx.restore();
       });
       
+      // Enhanced projectiles with trail effects
       projectiles.forEach(projectile => {
         ctx.save();
-        ctx.shadowBlur = 15;
+        ctx.shadowBlur = 20;
         ctx.shadowColor = "#00D4FF";
-        ctx.fillStyle = "#00D4FF";
+        
+        // Draw projectile trail
+        for (let i = 0; i < 5; i++) {
+          const alpha = (5 - i) / 5;
+          ctx.globalAlpha = alpha * 0.6;
+          ctx.fillStyle = "#00D4FF";
+          ctx.fillRect(projectile.x - 2, projectile.y - 8 + i * 3, 4, 12);
+        }
+        
+        // Main projectile
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = "#FFFFFF";
         ctx.fillRect(projectile.x - 2, projectile.y - 8, 4, 16);
         ctx.restore();
       });
       
+      // Render enemies as detailed rockets with engine trails
       enemies.forEach(enemy => {
-        ctx.save();
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = enemy.color;
-        ctx.fillStyle = enemy.color;
-        ctx.beginPath();
-        ctx.moveTo(enemy.x, enemy.y - enemy.size);
-        ctx.lineTo(enemy.x - enemy.size * 0.7, enemy.y + enemy.size);
-        ctx.lineTo(enemy.x + enemy.size * 0.7, enemy.y + enemy.size);
-        ctx.closePath();
-        ctx.fill();
-        ctx.restore();
+        // Calculate rotation angle based on movement direction
+        const angle = Math.atan2(enemy.vy || 0, enemy.vx || 0) + Math.PI / 2;
         
-        const healthBarWidth = enemy.size * 2;
+        // Create engine trail particles
+        if (Math.random() < 0.8) {
+          const engineTrail = createEngineTrail(
+            enemy.x - Math.sin(angle) * (enemy.size + 5),
+            enemy.y + Math.cos(angle) * (enemy.size + 5),
+            enemy.color
+          );
+          particles.push(...engineTrail);
+        }
+        
+        // Draw rocket with rotation
+        drawRocket(ctx, enemy.x, enemy.y, enemy.size, enemy.color, angle);
+        
+        // Enhanced health bar with glow effect
+        const healthBarWidth = enemy.size * 2.5;
         const healthPercent = enemy.health / enemy.maxHealth;
-        ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-        ctx.fillRect(enemy.x - healthBarWidth / 2, enemy.y - enemy.size - 8, healthBarWidth, 4);
-        ctx.fillStyle = healthPercent > 0.5 ? "#00FF88" : healthPercent > 0.25 ? "#FFA500" : "#FF1744";
-        ctx.fillRect(enemy.x - healthBarWidth / 2, enemy.y - enemy.size - 8, healthBarWidth * healthPercent, 4);
+        
+        ctx.save();
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
+        ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+        ctx.fillRect(enemy.x - healthBarWidth / 2, enemy.y - enemy.size - 12, healthBarWidth, 6);
+        
+        const healthColor = healthPercent > 0.5 ? "#00FF88" : healthPercent > 0.25 ? "#FFA500" : "#FF1744";
+        ctx.shadowColor = healthColor;
+        ctx.shadowBlur = 6;
+        ctx.fillStyle = healthColor;
+        ctx.fillRect(enemy.x - healthBarWidth / 2, enemy.y - enemy.size - 12, healthBarWidth * healthPercent, 6);
+        ctx.restore();
       });
       
+      // Enhanced player rocket with dynamic engine effects
+      const playerAngle = Math.atan2(player.vy || 0, player.vx || 0) + Math.PI / 2;
+      
+      // Player engine trail
+      if (Math.random() < 0.9) {
+        const engineTrail = createEngineTrail(
+          player.x - Math.sin(playerAngle) * 35,
+          player.y + Math.cos(playerAngle) * 35,
+          "#00D4FF"
+        );
+        particles.push(...engineTrail);
+      }
+      
+      // Draw player rocket
       ctx.save();
-      ctx.shadowBlur = 20;
+      ctx.translate(player.x, player.y);
+      ctx.rotate(playerAngle);
+      
+      // Rocket body
+      ctx.shadowBlur = 25;
       ctx.shadowColor = "#00D4FF";
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillRect(-8, -30, 16, 45);
+      
+      // Rocket nose cone
       ctx.fillStyle = "#00D4FF";
       ctx.beginPath();
-      ctx.moveTo(player.x, player.y - 25);
-      ctx.lineTo(player.x - 20, player.y + 25);
-      ctx.lineTo(player.x, player.y + 15);
-      ctx.lineTo(player.x + 20, player.y + 25);
+      ctx.moveTo(0, -30);
+      ctx.lineTo(-8, -15);
+      ctx.lineTo(8, -15);
       ctx.closePath();
       ctx.fill();
+      
+      // Rocket fins
+      ctx.fillStyle = "#0088CC";
+      ctx.fillRect(-12, 10, 8, 15);
+      ctx.fillRect(4, 10, 8, 15);
+      
+      // Engine glow
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = "#00D4FF";
+      ctx.fillStyle = "#00D4FF";
+      ctx.fillRect(-6, 15, 12, 8);
+      
       ctx.restore();
       
-      ctx.strokeStyle = "#00D4FF";
-      ctx.lineWidth = 2;
-      ctx.setLineDash([5, 5]);
+      // Player shield indicator with pulse effect
+      const pulseIntensity = Math.sin(Date.now() * 0.008) * 0.3 + 0.7;
+      ctx.strokeStyle = `rgba(0, 212, 255, ${pulseIntensity})`;
+      ctx.lineWidth = 3;
+      ctx.setLineDash([8, 4]);
       ctx.beginPath();
-      ctx.arc(player.x, player.y, 40, 0, Math.PI * 2);
+      ctx.arc(player.x, player.y, 45, 0, Math.PI * 2);
       ctx.stroke();
       ctx.setLineDash([]);
     };
