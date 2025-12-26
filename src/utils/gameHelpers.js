@@ -1,7 +1,8 @@
 export const checkCollision = (obj1, obj2, radius1 = 20, radius2 = 20) => {
   const dx = obj1.x - obj2.x;
   const dy = obj1.y - obj2.y;
-  const distance = Math.sqrt(dx * dx + dy * dy);
+  const dz = (obj1.z || 0) - (obj2.z || 0);
+  const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
   return distance < radius1 + radius2;
 };
 
@@ -13,25 +14,27 @@ export const getRandomSpawnPosition = (width, height) => {
   const side = Math.floor(Math.random() * 4);
   switch (side) {
     case 0: // Top
-      return { x: Math.random() * width, y: -30 };
+      return { x: (Math.random() - 0.5) * width, y: height/2 + 5, z: 0 };
     case 1: // Right
-      return { x: width + 30, y: Math.random() * height };
+      return { x: width/2 + 5, y: (Math.random() - 0.5) * height, z: 0 };
     case 2: // Bottom
-      return { x: Math.random() * width, y: height + 30 };
+      return { x: (Math.random() - 0.5) * width, y: -height/2 - 5, z: 0 };
     case 3: // Left
-      return { x: -30, y: Math.random() * height };
+      return { x: -width/2 - 5, y: (Math.random() - 0.5) * height, z: 0 };
     default:
-      return { x: Math.random() * width, y: -30 };
+      return { x: (Math.random() - 0.5) * width, y: height/2 + 5, z: 0 };
   }
 };
 
 export const calculateVelocityTowardsPlayer = (enemy, player, speed) => {
   const dx = player.x - enemy.x;
   const dy = player.y - enemy.y;
-  const distance = Math.sqrt(dx * dx + dy * dy);
+  const dz = (player.z || 0) - (enemy.z || 0);
+  const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
   return {
     vx: (dx / distance) * speed,
-    vy: (dy / distance) * speed
+    vy: (dy / distance) * speed,
+    vz: (dz / distance) * speed
   };
 };
 
@@ -81,40 +84,50 @@ export const drawRocket = (ctx, x, y, size, color, angle = 0, level = 1) => {
   ctx.restore();
 };
 
-// Create explosion particle effect
-export const createExplosion = (x, y, color) => {
+// Create explosion particle effect with 3D support
+export const createExplosion = (x, y, z = 0, color) => {
   const particles = [];
-  for (let i = 0; i < 15; i++) {
-    const angle = (Math.PI * 2 * i) / 15;
-    const velocity = Math.random() * 3 + 1;
+  for (let i = 0; i < 20; i++) {
+    const phi = Math.acos(1 - 2 * Math.random()); // Spherical distribution
+    const theta = 2 * Math.PI * Math.random();
+    const velocity = Math.random() * 0.3 + 0.1;
+    
     particles.push({
+      id: `explosion-${i}-${Date.now()}`,
       x: x,
       y: y,
-      vx: Math.cos(angle) * velocity,
-      vy: Math.sin(angle) * velocity,
+      z: z,
+      vx: Math.sin(phi) * Math.cos(theta) * velocity,
+      vy: Math.sin(phi) * Math.sin(theta) * velocity,
+      vz: Math.cos(phi) * velocity,
       life: 1,
+      maxLife: 1,
       color: color,
-      size: Math.random() * 8 + 4,
+      size: Math.random() * 0.8 + 0.4,
       type: 'explosion'
     });
   }
   return particles;
 };
 
-// Create engine trail particles
-export const createEngineTrail = (x, y, color, intensity = 1) => {
+// Create engine trail particles with 3D support
+export const createEngineTrail = (x, y, z = 0, color, intensity = 1) => {
   const particles = [];
-  const particleCount = Math.ceil(3 * intensity); // More particles with higher intensity
+  const particleCount = Math.ceil(3 * intensity);
   
   for (let i = 0; i < particleCount; i++) {
     particles.push({
-      x: x + (Math.random() - 0.5) * 4,
-      y: y + (Math.random() - 0.5) * 4,
-      vx: (Math.random() - 0.5) * (1 + intensity * 0.5),
-      vy: Math.random() * (2 + intensity) + 1,
+      id: `trail-${i}-${Date.now()}`,
+      x: x + (Math.random() - 0.5) * 0.4,
+      y: y + (Math.random() - 0.5) * 0.4,
+      z: z + (Math.random() - 0.5) * 0.4,
+      vx: (Math.random() - 0.5) * (0.1 + intensity * 0.05),
+      vy: Math.random() * (0.2 + intensity * 0.1) + 0.1,
+      vz: (Math.random() - 0.5) * 0.1,
       life: Math.random() * (0.5 + intensity * 0.3) + 0.5,
       color: color,
       type: 'trail',
+      size: Math.random() * 0.3 + 0.2,
       intensity: intensity
     });
   }
