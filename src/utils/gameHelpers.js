@@ -118,16 +118,16 @@ export const createEngineTrail = (x, y, z = 0, color, intensity = 1) => {
   for (let i = 0; i < particleCount; i++) {
     particles.push({
       id: `trail-${i}-${Date.now()}`,
-      x: x + (Math.random() - 0.5) * 0.4,
-      y: y + (Math.random() - 0.5) * 0.4,
-      z: z + (Math.random() - 0.5) * 0.4,
-      vx: (Math.random() - 0.5) * (0.1 + intensity * 0.05),
-      vy: Math.random() * (0.2 + intensity * 0.1) + 0.1,
-      vz: (Math.random() - 0.5) * 0.1,
-      life: Math.random() * (0.5 + intensity * 0.3) + 0.5,
-      color: color,
+      x: x + (Math.random() - 0.5) * (0.4 + intensity * 0.2),
+      y: y + (Math.random() - 0.5) * (0.4 + intensity * 0.2),
+      z: z + (Math.random() - 0.5) * (0.4 + intensity * 0.2),
+      vx: (Math.random() - 0.5) * (0.1 + intensity * 0.08),
+      vy: Math.random() * (0.2 + intensity * 0.15) + 0.1,
+      vz: (Math.random() - 0.5) * (0.1 + intensity * 0.05),
+      life: Math.random() * (0.5 + intensity * 0.4) + 0.5,
+      color: intensity > 1.5 ? "#00FFAA" : color,
       type: 'trail',
-      size: Math.random() * 0.3 + 0.2,
+      size: Math.random() * (0.3 + intensity * 0.2) + 0.2,
       intensity: intensity
     });
   }

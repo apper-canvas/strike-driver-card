@@ -261,10 +261,11 @@ const GameScene = ({
       <ParticleSystem particles={particles} />
       
       {/* Camera controls */}
-      <PerspectiveCamera
+<PerspectiveCamera
         makeDefault
-        position={[0, 0, 50]}
-        fov={60}
+        position={[player.x, player.y - 8, 12]}
+        fov={75}
+        rotation={[player.pitch || 0, player.yaw || 0, 0]}
       />
     </>
   );
@@ -279,11 +280,18 @@ const GameCanvas = ({
   isPaused 
 }) => {
   const containerRef = useRef(null);
-  const [player, setPlayer] = useState({ x: 0, y: -20, z: 0, health: 100, level: 1 });
+const [player, setPlayer] = useState({ 
+    x: 0, y: -20, z: 0, 
+    health: 100, level: 1, 
+    pitch: 0, yaw: 0,
+    boost: false, boostEnergy: 100 
+  });
   const [projectiles, setProjectiles] = useState([]);
   const [enemies, setEnemies] = useState([]);
   const [particles, setParticles] = useState([]);
   const [keys, setKeys] = useState({});
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [mouseDown, setMouseDown] = useState(false);
   const [enemyTypes, setEnemyTypes] = useState([]);
   const lastFireTime = useRef(0);
   const lastEnemySpawn = useRef(0);
@@ -303,7 +311,7 @@ const GameCanvas = ({
     loadEnemyTypes();
   }, []);
   
-  useEffect(() => {
+useEffect(() => {
     const handleKeyDown = (e) => {
       setKeys(prev => ({ ...prev, [e.key.toLowerCase()]: true }));
     };
@@ -312,35 +320,88 @@ const GameCanvas = ({
       setKeys(prev => ({ ...prev, [e.key.toLowerCase()]: false }));
     };
     
+    const handleMouseMove = (e) => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        const sensitivity = 0.002;
+        const deltaX = e.movementX * sensitivity;
+        const deltaY = e.movementY * sensitivity;
+        
+        setPlayer(prev => ({
+          ...prev,
+          yaw: prev.yaw + deltaX,
+          pitch: Math.max(-Math.PI/3, Math.min(Math.PI/3, prev.pitch + deltaY))
+        }));
+      }
+    };
+    
+    const handleMouseDown = (e) => {
+      if (e.button === 0) { // Left mouse button
+        setMouseDown(true);
+      }
+    };
+    
+    const handleMouseUp = (e) => {
+      if (e.button === 0) {
+        setMouseDown(false);
+      }
+    };
+    
+    const handleClick = () => {
+      if (containerRef.current) {
+        containerRef.current.requestPointerLock();
+      }
+    };
+    
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mousedown", handleMouseDown);
+    window.addEventListener("mouseup", handleMouseUp);
+    
+    if (containerRef.current) {
+      containerRef.current.addEventListener("click", handleClick);
+    }
     
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mousedown", handleMouseDown);
+      window.removeEventListener("mouseup", handleMouseUp);
+      
+      if (containerRef.current) {
+        containerRef.current.removeEventListener("click", handleClick);
+      }
     };
   }, []);
   
-  const fireProjectile = useCallback(() => {
+const fireProjectile = useCallback(() => {
     const now = Date.now();
     const fireRate = Math.max(150, 250 - gameState.level * 10);
     
     if (now - lastFireTime.current > fireRate) {
+      // Calculate projectile direction based on player's aim
+      const yawCos = Math.cos(player.yaw);
+      const yawSin = Math.sin(player.yaw);
+      const pitchCos = Math.cos(player.pitch);
+      const pitchSin = Math.sin(player.pitch);
+      
       setProjectiles(prev => [...prev, {
         id: generateId(),
         x: player.x,
-        y: player.y - 3,
-        z: 0,
-        velocityX: 0,
-        velocityY: -0.8 - gameState.level * 0.1,
-        velocityZ: 0,
+        y: player.y - 2,
+        z: player.z,
+        velocityX: yawSin * pitchCos * 1.2,
+        velocityY: -pitchSin * 1.2,
+        velocityZ: yawCos * pitchCos * 1.2,
         damage: 1 + Math.floor(gameState.level / 3),
         owner: "player"
       }]);
       
       lastFireTime.current = now;
     }
-  }, [player.x, player.y, gameState.level]);
+  }, [player.x, player.y, player.z, player.yaw, player.pitch, gameState.level]);
   
   const spawnEnemy = useCallback(() => {
     if (enemyTypes.length === 0) return;
@@ -391,24 +452,79 @@ const handleExplosion = useCallback((x, y, z, color) => {
     
     const dt = Math.min(deltaTime / 16.67, 2);
     
-    setPlayer(prev => {
+setPlayer(prev => {
       let newX = prev.x;
       let newY = prev.y;
+      let newZ = prev.z;
+      let newBoostEnergy = prev.boostEnergy;
       const currentLevel = gameState.level || 1;
-      const speed = 0.5 + currentLevel * 0.05;
       
-      if (keys["arrowleft"] || keys["a"]) newX -= speed;
-      if (keys["arrowright"] || keys["d"]) newX += speed;
-      if (keys["arrowup"] || keys["w"]) newY -= speed;
-      if (keys["arrowdown"] || keys["s"]) newY += speed;
+      const isBoostActive = keys[" "] || keys["space"];
+      const baseSpeed = 0.5 + currentLevel * 0.05;
+      const boostMultiplier = isBoostActive && newBoostEnergy > 0 ? 2.0 : 1.0;
+      const speed = baseSpeed * boostMultiplier;
       
+      // First-person WASD movement relative to player facing direction
+      const yawCos = Math.cos(prev.yaw);
+      const yawSin = Math.sin(prev.yaw);
+      
+      let moveX = 0, moveY = 0, moveZ = 0;
+      
+      if (keys["w"]) { // Forward
+        moveX += yawSin * speed;
+        moveZ += yawCos * speed;
+      }
+      if (keys["s"]) { // Backward
+        moveX -= yawSin * speed;
+        moveZ -= yawCos * speed;
+      }
+      if (keys["a"]) { // Strafe left
+        moveX -= yawCos * speed;
+        moveZ += yawSin * speed;
+      }
+      if (keys["d"]) { // Strafe right
+        moveX += yawCos * speed;
+        moveZ -= yawSin * speed;
+      }
+      
+      newX += moveX;
+      newY += moveY;
+      newZ += moveZ;
+      
+      // Handle boost energy
+      if (isBoostActive && newBoostEnergy > 0) {
+        newBoostEnergy = Math.max(0, newBoostEnergy - 2 * dt);
+        
+        // Create boost particles
+        const trailParticles = createEngineTrail(
+          newX - yawSin * 3, 
+          newY + 1, 
+          newZ - yawCos * 3, 
+          "#00D4FF", 
+          2.0
+        );
+        setParticles(prev => [...prev, ...trailParticles]);
+      } else if (!isBoostActive && newBoostEnergy < 100) {
+        newBoostEnergy = Math.min(100, newBoostEnergy + 1 * dt);
+      }
+      
+      // World boundaries
       newX = Math.max(-canvasBounds.width/2 + 3, Math.min(canvasBounds.width/2 - 3, newX));
       newY = Math.max(-canvasBounds.height/2 + 3, Math.min(canvasBounds.height/2 - 3, newY));
+      newZ = Math.max(-canvasBounds.width/2 + 3, Math.min(canvasBounds.width/2 - 3, newZ));
       
-      return { ...prev, x: newX, y: newY, level: currentLevel };
+      return { 
+        ...prev, 
+        x: newX, 
+        y: newY, 
+        z: newZ,
+        level: currentLevel,
+        boost: isBoostActive && prev.boostEnergy > 0,
+        boostEnergy: newBoostEnergy
+      };
     });
     
-    if (keys[" "] || keys["space"]) {
+if (mouseDown) {
       fireProjectile();
     }
     
@@ -537,10 +653,11 @@ handleExplosion,
   useGameLoop(updateGame, !isPaused);
   
   return (
-    <div 
+<div 
       ref={containerRef}
-      className="w-full h-full border-2 border-primary/30 rounded-lg shadow-2xl overflow-hidden"
+      className="w-full h-full border-2 border-primary/30 rounded-lg shadow-2xl overflow-hidden cursor-crosshair"
       style={{ width: "800px", height: "600px", maxWidth: "100%" }}
+      title="Click to enable mouse look controls"
     >
       <Canvas
         shadows
