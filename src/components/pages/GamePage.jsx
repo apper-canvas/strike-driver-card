@@ -99,9 +99,9 @@ const GamePage = () => {
               level={gameState.level}
             />
             
-            <GameCanvas 
+<GameCanvas 
               gameState={gameState}
-onScoreUpdate={(newScore) => setGameState(prev => ({ ...prev, score: newScore }))}
+              onScoreUpdate={(newScore) => setGameState(prev => ({ ...prev, score: newScore }))}
               onHealthUpdate={setHealth}
               onComboUpdate={(newCombo) => setGameState(prev => ({ ...prev, combo: newCombo }))}
               onGameOver={handleGameOver}

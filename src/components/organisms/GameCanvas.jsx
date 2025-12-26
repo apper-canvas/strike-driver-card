@@ -21,7 +21,7 @@ const GameCanvas = ({
   isPaused 
 }) => {
   const canvasRef = useRef(null);
-  const [player, setPlayer] = useState({ x: 400, y: 500, health: 100 });
+const [player, setPlayer] = useState({ x: 400, y: 500, health: 100, level: 1 });
   const [projectiles, setProjectiles] = useState([]);
   const [enemies, setEnemies] = useState([]);
   const [particles, setParticles] = useState([]);
@@ -57,23 +57,28 @@ const GameCanvas = ({
     };
   }, []);
 
-  const fireProjectile = useCallback(() => {
+const fireProjectile = useCallback(() => {
     const now = Date.now();
-    if (now - lastFireTime.current > 200) {
+    const currentLevel = gameState.level || 1;
+    const fireRate = Math.max(100, 200 - (currentLevel * 20)); // Faster fire rate per level
+    const missileDamage = 1 + (currentLevel - 1) * 0.5; // Increased damage per level
+    
+    if (now - lastFireTime.current > fireRate) {
       setProjectiles(prev => [...prev, {
         id: generateId(),
         x: player.x,
         y: player.y - 20,
         velocityX: 0,
-        velocityY: -8,
-        damage: 1,
-        owner: "player"
+        velocityY: -8 - (currentLevel * 0.5), // Faster missiles per level
+        damage: missileDamage,
+        owner: "player",
+        level: currentLevel
       }]);
       lastFireTime.current = now;
     }
-  }, [player.x, player.y]);
+  }, [player.x, player.y, gameState.level]);
 
-  const spawnEnemy = useCallback(async () => {
+const spawnEnemy = useCallback(async () => {
     if (enemyTypes.length === 0) return;
     
     const canvas = canvasRef.current;
@@ -81,28 +86,34 @@ const GameCanvas = ({
     
     const spawnPos = getRandomSpawnPosition(canvas.width, canvas.height);
     const enemyType = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
+    const currentLevel = gameState.level || 1;
+    
+    // Scale enemy health based on level
+    const healthMultiplier = 1 + (currentLevel - 1) * 0.5;
+    const scaledHealth = Math.ceil(enemyType.health * healthMultiplier);
     
     const newEnemy = {
       id: generateId(),
       x: spawnPos.x,
       y: spawnPos.y,
       type: enemyType.type,
-      health: enemyType.health,
-      maxHealth: enemyType.health,
-      speed: enemyType.speed,
-      points: enemyType.points,
+      health: scaledHealth,
+      maxHealth: scaledHealth,
+      speed: enemyType.speed + (currentLevel - 1) * 0.2, // Slightly faster enemies per level
+      points: Math.ceil(enemyType.points * healthMultiplier), // More points for stronger enemies
       color: enemyType.color,
       size: enemyType.size,
       vx: 0,
-      vy: 0
+      vy: 0,
+      level: currentLevel
     };
     
-    const velocity = calculateVelocityTowardsPlayer(newEnemy, player, enemyType.speed);
+    const velocity = calculateVelocityTowardsPlayer(newEnemy, player, newEnemy.speed);
     newEnemy.vx = velocity.vx;
     newEnemy.vy = velocity.vy;
     
     setEnemies(prev => [...prev, newEnemy]);
-  }, [enemyTypes, player]);
+  }, [enemyTypes, player, gameState.level]);
 
 const createExplosion = useCallback((x, y, color) => {
     const particleCount = 30;
@@ -138,10 +149,11 @@ const createExplosion = useCallback((x, y, color) => {
     
 const dt = Math.min(deltaTime / 16.67, 2); // Cap delta time for smooth animations
     
-    setPlayer(prev => {
+setPlayer(prev => {
       let newX = prev.x;
       let newY = prev.y;
-      const speed = 5;
+      const currentLevel = gameState.level || 1;
+      const speed = 5 + currentLevel; // Increased speed per level
       
       if (keys["arrowleft"] || keys["a"]) newX -= speed;
       if (keys["arrowright"] || keys["d"]) newX += speed;
@@ -151,7 +163,7 @@ const dt = Math.min(deltaTime / 16.67, 2); // Cap delta time for smooth animatio
       newX = Math.max(30, Math.min(canvas.width - 30, newX));
       newY = Math.max(30, Math.min(canvas.height - 30, newY));
       
-      return { ...prev, x: newX, y: newY };
+      return { ...prev, x: newX, y: newY, level: currentLevel };
     });
     
     if (keys[" "] || keys["space"]) {
@@ -403,6 +415,7 @@ const ctx = canvas.getContext("2d");
       });
       
 // Enhanced player rocket with smooth rotation and dynamic effects
+      const currentLevel = gameState.level || 1;
       const targetPlayerAngle = 0; // Initialize target angle for player
       player.angle = player.angle || targetPlayerAngle;
       
@@ -411,11 +424,12 @@ const ctx = canvas.getContext("2d");
       const normalizedPlayerDiff = Math.atan2(Math.sin(playerAngleDiff), Math.cos(playerAngleDiff));
       player.angle += normalizedPlayerDiff * 0.2;
       
-      // Enhanced player engine trail with dynamic intensity
+      // Enhanced player engine trail with dynamic intensity based on level
       const speed = Math.sqrt((player.vx || 0) ** 2 + (player.vy || 0) ** 2);
-      const trailIntensity = Math.min(speed / 10, 1);
+      const trailIntensity = Math.min(speed / 10, 1) + (currentLevel * 0.1);
+      const trailFrequency = 0.95 - (currentLevel * 0.05); // More frequent trails at higher levels
       
-      if (Math.random() < 0.95) {
+      if (Math.random() < trailFrequency) {
         const engineTrail = createEngineTrail(
           player.x - Math.sin(player.angle) * 35,
           player.y + Math.cos(player.angle) * 35,
@@ -425,18 +439,23 @@ const ctx = canvas.getContext("2d");
         particles.push(...engineTrail);
       }
       
-// Draw player rocket
+// Draw player rocket with level-based scaling
+      const rocketScale = 1 + (currentLevel - 1) * 0.1; // Slightly larger rocket per level
+      const glowIntensity = 25 + (currentLevel * 5); // Increased glow per level
+      
       ctx.save();
       ctx.translate(player.x, player.y);
       ctx.rotate(player.angle);
-      // Rocket body
-      ctx.shadowBlur = 25;
+      ctx.scale(rocketScale, rocketScale);
+      
+      // Rocket body with enhanced glow
+      ctx.shadowBlur = glowIntensity;
       ctx.shadowColor = "#00D4FF";
       ctx.fillStyle = "#FFFFFF";
       ctx.fillRect(-8, -30, 16, 45);
       
-      // Rocket nose cone
-      ctx.fillStyle = "#00D4FF";
+      // Rocket nose cone with level-based enhancement
+      ctx.fillStyle = currentLevel >= 3 ? "#00FFAA" : "#00D4FF"; // Color upgrade at level 3
       ctx.beginPath();
       ctx.moveTo(0, -30);
       ctx.lineTo(-8, -15);
@@ -444,26 +463,26 @@ const ctx = canvas.getContext("2d");
       ctx.closePath();
       ctx.fill();
       
-      // Rocket fins
-      ctx.fillStyle = "#0088CC";
+      // Rocket fins with level-based color
+      ctx.fillStyle = currentLevel >= 2 ? "#0099DD" : "#0088CC"; // Enhanced fins at level 2
       ctx.fillRect(-12, 10, 8, 15);
       ctx.fillRect(4, 10, 8, 15);
       
-      // Engine glow
-      ctx.shadowBlur = 15;
+      // Engine glow with level scaling
+      ctx.shadowBlur = 15 + (currentLevel * 3);
       ctx.shadowColor = "#00D4FF";
       ctx.fillStyle = "#00D4FF";
       ctx.fillRect(-6, 15, 12, 8);
       
       ctx.restore();
       
-      // Player shield indicator with pulse effect
-      const pulseIntensity = Math.sin(Date.now() * 0.008) * 0.3 + 0.7;
-      ctx.strokeStyle = `rgba(0, 212, 255, ${pulseIntensity})`;
-      ctx.lineWidth = 3;
+      // Player shield indicator with level-enhanced pulse effect
+      const pulseIntensity = (Math.sin(Date.now() * 0.008) * 0.3 + 0.7) * (1 + currentLevel * 0.1);
+      ctx.strokeStyle = `rgba(0, 212, 255, ${Math.min(pulseIntensity, 1)})`;
+      ctx.lineWidth = 3 + Math.floor(currentLevel / 2); // Thicker shield lines at higher levels
       ctx.setLineDash([8, 4]);
       ctx.beginPath();
-      ctx.arc(player.x, player.y, 45, 0, Math.PI * 2);
+      ctx.arc(player.x, player.y, 45 + (currentLevel * 2), 0, Math.PI * 2);
       ctx.stroke();
       ctx.setLineDash([]);
     };

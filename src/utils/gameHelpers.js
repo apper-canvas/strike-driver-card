@@ -40,19 +40,24 @@ return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 };
 
 // Draw detailed rocket sprite with rotation
-export const drawRocket = (ctx, x, y, size, color, angle = 0) => {
+export const drawRocket = (ctx, x, y, size, color, angle = 0, level = 1) => {
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(angle);
   
-  // Rocket body
-  ctx.shadowBlur = 15;
+  // Level-based scaling and glow enhancement
+  const levelScale = 1 + (level - 1) * 0.05;
+  const glowIntensity = 15 + (level * 3);
+  ctx.scale(levelScale, levelScale);
+  
+  // Rocket body with enhanced glow
+  ctx.shadowBlur = glowIntensity;
   ctx.shadowColor = color;
   ctx.fillStyle = color;
   ctx.fillRect(-size * 0.4, -size, size * 0.8, size * 1.5);
   
-  // Rocket nose cone
-  ctx.fillStyle = color;
+  // Rocket nose cone with level-based enhancement
+  ctx.fillStyle = level >= 3 ? "#FFAA00" : color;
   ctx.beginPath();
   ctx.moveTo(0, -size);
   ctx.lineTo(-size * 0.4, -size * 0.6);
@@ -60,14 +65,15 @@ export const drawRocket = (ctx, x, y, size, color, angle = 0) => {
   ctx.closePath();
   ctx.fill();
   
-  // Rocket fins
-  const finColor = color.replace('rgb', 'rgba').replace(')', ', 0.8)');
+  // Rocket fins with level-based alpha
+  const finAlpha = Math.min(0.8 + (level * 0.1), 1.0);
+  const finColor = color.replace('rgb', 'rgba').replace(')', `, ${finAlpha})`);
   ctx.fillStyle = finColor;
   ctx.fillRect(-size * 0.6, size * 0.3, size * 0.2, size * 0.5);
   ctx.fillRect(size * 0.4, size * 0.3, size * 0.2, size * 0.5);
   
-  // Engine glow
-  ctx.shadowBlur = 10;
+  // Engine glow with level enhancement
+  ctx.shadowBlur = 10 + (level * 2);
   ctx.shadowColor = color;
   ctx.fillStyle = color;
   ctx.fillRect(-size * 0.3, size * 0.5, size * 0.6, size * 0.3);
@@ -96,17 +102,20 @@ export const createExplosion = (x, y, color) => {
 };
 
 // Create engine trail particles
-export const createEngineTrail = (x, y, color) => {
+export const createEngineTrail = (x, y, color, intensity = 1) => {
   const particles = [];
-  for (let i = 0; i < 3; i++) {
+  const particleCount = Math.ceil(3 * intensity); // More particles with higher intensity
+  
+  for (let i = 0; i < particleCount; i++) {
     particles.push({
       x: x + (Math.random() - 0.5) * 4,
       y: y + (Math.random() - 0.5) * 4,
-      vx: (Math.random() - 0.5) * 1,
-      vy: Math.random() * 2 + 1,
-      life: Math.random() * 0.5 + 0.5,
+      vx: (Math.random() - 0.5) * (1 + intensity * 0.5),
+      vy: Math.random() * (2 + intensity) + 1,
+      life: Math.random() * (0.5 + intensity * 0.3) + 0.5,
       color: color,
-      type: 'trail'
+      type: 'trail',
+      intensity: intensity
     });
   }
   return particles;
