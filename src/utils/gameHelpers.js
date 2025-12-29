@@ -1,4 +1,4 @@
-export const checkCollision = (obj1, obj2, radius1 = 20, radius2 = 20) => {
+export const checkCollision = (obj1, obj2, radius1 = 2, radius2 = 2) => {
   const dx = obj1.x - obj2.x;
   const dy = obj1.y - obj2.y;
   const dz = (obj1.z || 0) - (obj2.z || 0);
@@ -49,16 +49,15 @@ export const calculateVelocityTowardsPlayer = (enemy, player, speed) => {
 export const generateId = () => {
 return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 };
-
-// Draw detailed rocket sprite with enhanced level progression
+// Draw detailed rocket sprite with balanced level progression
 export const drawRocket = (ctx, x, y, size, color, angle = 0, level = 1) => {
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(angle);
   
-  // Enhanced level-based scaling and effects
-  const levelScale = 1 + (level - 1) * 0.08; // Increased scaling
-  const glowIntensity = 18 + (level * 4); // Enhanced glow
+  // Balanced level-based scaling and effects
+  const levelScale = 0.8 + (level - 1) * 0.05; // Reduced base scale
+  const glowIntensity = 12 + (level * 2); // Reduced glow intensity
   ctx.scale(levelScale, levelScale);
   
   // Rocket body with progressive enhancement

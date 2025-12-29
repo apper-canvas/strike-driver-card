@@ -17,9 +17,9 @@ const PlayerShip = ({ position, level, pitch, yaw }) => {
       // Subtle floating animation preserved but reduced
       meshRef.current.position.y = position.y + Math.sin(state.clock.elapsedTime * 1.5) * 0.1;
     }
-  });
+});
 
-  const shipScale = 1 + (level - 1) * 0.1;
+  const shipScale = 0.3 + (level - 1) * 0.05;
   const glowColor = level >= 3 ? "#00FFAA" : "#00D4FF";
 
   return (
@@ -261,12 +261,11 @@ const GameScene = ({
       ))}
       
       <ParticleSystem particles={particles} />
-      
-      {/* Camera controls */}
+{/* Camera controls */}
 <PerspectiveCamera
         makeDefault
-        position={[player.x, player.y - 8, 12]}
-        fov={75}
+        position={[player.x, player.y - 15, 18]}
+        fov={70}
       />
     </>
   );
@@ -280,24 +279,24 @@ const GameCanvas = ({
   onGameOver, 
   isPaused 
 }) => {
-  const containerRef = useRef(null);
   const [player, setPlayer] = useState({ 
     x: 0, y: -20, z: 0, 
     health: 100, level: 1, 
     pitch: 0, yaw: 0,
     boost: false, boostEnergy: 100,
-    mouseSensitivity: 0.002
+    mouseSensitivity: 0.001
   });
-  const [projectiles, setProjectiles] = useState([]);
   const [enemies, setEnemies] = useState([]);
+  const [projectiles, setProjectiles] = useState([]);
   const [particles, setParticles] = useState([]);
   const [keys, setKeys] = useState({});
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [mouseDown, setMouseDown] = useState(false);
-  const [enemyTypes, setEnemyTypes] = useState([]);
+const [enemyTypes, setEnemyTypes] = useState([]);
   const lastFireTime = useRef(0);
   const lastEnemySpawn = useRef(0);
   const comboTimer = useRef(null);
+  const containerRef = useRef();
   const canvasBounds = { width: 80, height: 60 }; // 3D world coordinates
   
   useEffect(() => {
@@ -498,9 +497,8 @@ setPlayer(prev => {
       const currentLevel = gameState.level || 1;
       
       const isBoostActive = keys[" "] || keys["space"];
-      const baseSpeed = 0.8 + currentLevel * 0.15; // Increased base speed and level scaling
-      const boostMultiplier = isBoostActive && newBoostEnergy > 0 ? 2.5 : 1.0; // Increased boost multiplier
-      const speed = baseSpeed * boostMultiplier;
+      const baseSpeed = 1.2 + currentLevel * 0.2; // Enhanced base speed and level scaling
+      const boostMultiplier = isBoostActive && newBoostEnergy > 0 ? 3.0 : 1.0; // Enhanced boost multiplier
       
       // Enhanced 3D movement with rotation
       const yawCos = Math.cos(prev.yaw);
@@ -511,11 +509,12 @@ setPlayer(prev => {
       let moveX = 0, moveY = 0, moveZ = 0;
       
       // WASD movement relative to player facing direction
+// WASD movement relative to player facing direction
+      const speed = baseSpeed * boostMultiplier * dt;
       if (keys["w"]) { // Forward
         moveX += yawSin * pitchCos * speed;
         moveY += -pitchSin * speed;
         moveZ += yawCos * pitchCos * speed;
-      }
       if (keys["s"]) { // Backward
         moveX -= yawSin * pitchCos * speed;
         moveY -= -pitchSin * speed;
@@ -557,9 +556,9 @@ setPlayer(prev => {
         newBoostEnergy = Math.min(100, newBoostEnergy + 0.8 * dt); // Faster recharge
       }
       
-      // Enhanced world boundaries with Y-axis
-      const boundary = canvasBounds.width/2 - 3;
-      const yBoundary = canvasBounds.height/2 - 3;
+// Enhanced world boundaries with Y-axis
+      const boundary = canvasBounds.width/2 - 5;
+      const yBoundary = canvasBounds.height/2 - 5;
       newX = Math.max(-boundary, Math.min(boundary, newX));
       newY = Math.max(-yBoundary, Math.min(yBoundary, newY));
       newZ = Math.max(-boundary, Math.min(boundary, newZ));
@@ -596,16 +595,15 @@ if (mouseDown) {
       lastEnemySpawn.current = now;
     }
     
-    setEnemies(prev => {
+setEnemies(prev => {
       let updatedEnemies = prev.map(enemy => ({
         ...enemy,
         x: enemy.x + enemy.vx * dt,
         y: enemy.y + enemy.vy * dt,
         z: enemy.z + (enemy.vz || 0) * dt
-      }));
-      
-      updatedEnemies = updatedEnemies.filter(enemy => {
-        if (checkCollision(enemy, player, enemy.size * 10, 2.5)) {
+      })).filter(enemy => {
+        // Check player collision with proper detection
+        if (checkCollision(enemy, player, enemy.size * 0.8, 1.2)) {
           onHealthUpdate(prev => {
             const newHealth = Math.max(0, prev - 20);
             if (newHealth <= 0) {
@@ -631,10 +629,10 @@ handleExplosion(enemy.x, enemy.y, enemy.z, enemy.color);
           let hit = false;
           
           setEnemies(prevEnemies => {
-            return prevEnemies.map(enemy => {
+return prevEnemies.map(enemy => {
               if (hit || hitEnemyIds.has(enemy.id)) return enemy;
               
-              if (checkCollision(projectile, enemy, 0.5, enemy.size * 10)) {
+              if (checkCollision(projectile, enemy, 0.5, enemy.size * 0.8)) {
                 hit = true;
                 hitEnemyIds.add(enemy.id);
                 
