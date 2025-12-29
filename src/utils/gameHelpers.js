@@ -1,9 +1,10 @@
 export const checkCollision = (obj1, obj2, radius1 = 2, radius2 = 2) => {
-  const dx = obj1.x - obj2.x;
-  const dy = obj1.y - obj2.y;
+  if (!obj1 || !obj2) return false;
+  const dx = (obj1.x || 0) - (obj2.x || 0);
+  const dy = (obj1.y || 0) - (obj2.y || 0);
   const dz = (obj1.z || 0) - (obj2.z || 0);
   const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-  return distance < radius1 + radius2;
+  return distance < (radius1 + radius2);
 };
 
 export const isOutOfBounds = (x, y, width, height) => {
@@ -29,8 +30,8 @@ export const getRandomSpawnPosition = (width, height) => {
 };
 
 export const calculateVelocityTowardsPlayer = (enemy, player, speed) => {
-  const dx = player.x - enemy.x;
-  const dy = player.y - enemy.y;
+  const dx = (player.x || 0) - (enemy.x || 0);
+  const dy = (player.y || 0) - (enemy.y || 0);
   const dz = (player.z || 0) - (enemy.z || 0);
   const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
   

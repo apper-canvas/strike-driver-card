@@ -295,10 +295,11 @@ const GameCanvas = ({
 }) => {
 const [player, setPlayer] = useState({ 
     x: 0, y: 0, z: 0, 
-    health: 100, level: 1, 
+health: 100, level: 1, 
     pitch: 0, yaw: 0,
     boost: false, boostEnergy: 100,
-    mouseSensitivity: 0.001
+    mouseSensitivity: 0.002,
+    velocity: { x: 0, y: 0, z: 0 }
   });
   const [enemies, setEnemies] = useState([]);
   const [projectiles, setProjectiles] = useState([]);
@@ -327,7 +328,7 @@ const [enemyTypes, setEnemyTypes] = useState([]);
   }, []);
 
   // Mouse look controls component
-  const MouseControls = () => {
+const MouseControls = () => {
     const { gl } = useThree();
 
     useEffect(() => {
@@ -372,21 +373,6 @@ useEffect(() => {
       setKeys(prev => ({ ...prev, [e.key.toLowerCase()]: false }));
     };
     
-    const handleMouseMove = (e) => {
-      if (containerRef.current) {
-        const rect = containerRef.current.getBoundingClientRect();
-        const sensitivity = 0.002;
-        const deltaX = e.movementX * sensitivity;
-        const deltaY = e.movementY * sensitivity;
-        
-        setPlayer(prev => ({
-          ...prev,
-          yaw: prev.yaw + deltaX,
-          pitch: Math.max(-Math.PI/3, Math.min(Math.PI/3, prev.pitch + deltaY))
-        }));
-      }
-    };
-    
     const handleMouseDown = (e) => {
       if (e.button === 0) { // Left mouse button
         setMouseDown(true);
@@ -405,9 +391,8 @@ useEffect(() => {
       }
     };
     
-    window.addEventListener("keydown", handleKeyDown);
+window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
-    window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mousedown", handleMouseDown);
     window.addEventListener("mouseup", handleMouseUp);
     
@@ -416,9 +401,8 @@ useEffect(() => {
     }
     
     return () => {
-      window.removeEventListener("keydown", handleKeyDown);
+window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
-      window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mousedown", handleMouseDown);
       window.removeEventListener("mouseup", handleMouseUp);
       
@@ -439,14 +423,16 @@ const fireProjectile = useCallback(() => {
       const pitchCos = Math.cos(player.pitch);
       const pitchSin = Math.sin(player.pitch);
       
+      const speed = 2.0;
+      
       setProjectiles(prev => [...prev, {
         id: generateId(),
-x: player.x,
-        y: player.y - 2,
+        x: player.x,
+        y: player.y,
         z: player.z,
-        velocityX: yawSin * pitchCos * 1.5,
-        velocityY: -pitchSin * 1.5,
-        velocityZ: yawCos * pitchCos * 1.5,
+        velocityX: yawSin * pitchCos * speed,
+        velocityY: -pitchSin * speed,
+        velocityZ: yawCos * pitchCos * speed,
         damage: 1 + Math.floor(gameState.level / 3),
         owner: "player"
       }]);
@@ -455,12 +441,12 @@ x: player.x,
     }
   }, [player.x, player.y, player.z, player.yaw, player.pitch, gameState.level]);
   
-  const spawnEnemy = useCallback(() => {
+const spawnEnemy = useCallback(() => {
     if (enemyTypes.length === 0) return;
     
     const enemyType = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
     const spawnPos = getRandomSpawnPosition(canvasBounds.width, canvasBounds.height);
-    const velocity = calculateVelocityTowardsPlayer(spawnPos, player, enemyType.speed * 0.1);
+    const velocity = calculateVelocityTowardsPlayer(spawnPos, player, enemyType.speed * 0.05);
     
     const enemy = {
       id: generateId(),
@@ -500,10 +486,12 @@ const handleExplosion = useCallback((x, y, z, color) => {
   }, []);
   
   const updateGame = useCallback((deltaTime) => {
-    if (isPaused) return;
+if (isPaused) return;
     
     const dt = Math.min(deltaTime / 16.67, 2);
-setPlayer(prev => {
+    
+// Update player movement (consolidated)
+    setPlayer(prev => {
       let newX = prev.x;
       let newY = prev.y;
       let newZ = prev.z;
@@ -588,10 +576,12 @@ setPlayer(prev => {
       };
     });
     
-if (mouseDown) {
+// Handle shooting
+    if (mouseDown) {
       fireProjectile();
     }
     
+    // Update projectiles
     setProjectiles(prev => prev
       .map(p => ({
         ...p,
@@ -602,6 +592,7 @@ if (mouseDown) {
       .filter(p => !isOutOfBounds(p.x, p.y, canvasBounds.width, canvasBounds.height))
     );
     
+    // Spawn enemies
     const now = Date.now();
     const spawnRate = Math.max(1000, 2000 - gameState.level * 100);
     
@@ -610,15 +601,52 @@ if (mouseDown) {
       lastEnemySpawn.current = now;
     }
     
-setEnemies(prev => {
-      let updatedEnemies = prev.map(enemy => ({
-        ...enemy,
-        x: enemy.x + enemy.vx * dt,
-        y: enemy.y + enemy.vy * dt,
-        z: enemy.z + (enemy.vz || 0) * dt
-      })).filter(enemy => {
+// Update enemies and handle enemy shooting
+    setEnemies(prev => {
+      let updatedEnemies = prev.map(enemy => {
+        // Update enemy position
+        const updatedEnemy = {
+          ...enemy,
+          x: enemy.x + enemy.vx * dt,
+          y: enemy.y + enemy.vy * dt,
+          z: enemy.z + (enemy.vz || 0) * dt
+        };
+        
+        // Enemy shooting logic
+        if (!enemy.lastShot) enemy.lastShot = 0;
+        const enemyFireRate = 1500 + Math.random() * 1000; // Random fire rate
+        
+        if (now - enemy.lastShot > enemyFireRate) {
+          const distanceToPlayer = Math.sqrt(
+            Math.pow(enemy.x - player.x, 2) + 
+            Math.pow(enemy.y - player.y, 2) + 
+            Math.pow(enemy.z - player.z, 2)
+          );
+          
+          // Only shoot if player is within range
+          if (distanceToPlayer < 80) {
+            const direction = calculateVelocityTowardsPlayer(enemy, player, 1.2);
+            
+            setProjectiles(prevProj => [...prevProj, {
+              id: generateId(),
+              x: enemy.x,
+              y: enemy.y,
+              z: enemy.z,
+              velocityX: direction.vx,
+              velocityY: direction.vy,
+              velocityZ: direction.vz || 0,
+              damage: 10,
+              owner: "enemy"
+            }]);
+            
+            updatedEnemy.lastShot = now;
+          }
+        }
+        
+        return updatedEnemy;
+      }).filter(enemy => {
         // Check player collision with proper detection
-        if (checkCollision(enemy, player, enemy.size * 0.8, 1.2)) {
+        if (checkCollision(enemy, player, enemy.size * 0.8, 2.0)) {
           onHealthUpdate(prev => {
             const newHealth = Math.max(0, prev - 20);
             if (newHealth <= 0) {
@@ -626,7 +654,7 @@ setEnemies(prev => {
             }
             return newHealth;
           });
-handleExplosion(enemy.x, enemy.y, enemy.z, enemy.color);
+          handleExplosion(enemy.x, enemy.y, enemy.z, enemy.color);
           return false;
         }
         return !isOutOfBounds(enemy.x, enemy.y, canvasBounds.width, canvasBounds.height);
@@ -639,15 +667,15 @@ handleExplosion(enemy.x, enemy.y, enemy.z, enemy.color);
       const remainingProjectiles = [];
       const hitEnemyIds = new Set();
       
-      prev.forEach(projectile => {
+prev.forEach(projectile => {
         if (projectile.owner === "player") {
           let hit = false;
           
           setEnemies(prevEnemies => {
-return prevEnemies.map(enemy => {
+            return prevEnemies.map(enemy => {
               if (hit || hitEnemyIds.has(enemy.id)) return enemy;
               
-              if (checkCollision(projectile, enemy, 0.5, enemy.size * 0.8)) {
+              if (checkCollision(projectile, enemy, 1.0, enemy.size * 0.8)) {
                 hit = true;
                 hitEnemyIds.add(enemy.id);
                 
@@ -669,7 +697,7 @@ return prevEnemies.map(enemy => {
                     return newCombo;
                   });
                   
-handleExplosion(enemy.x, enemy.y, enemy.z, enemy.color);
+                  handleExplosion(enemy.x, enemy.y, enemy.z, enemy.color);
                   return null;
                 }
                 
@@ -677,10 +705,24 @@ handleExplosion(enemy.x, enemy.y, enemy.z, enemy.color);
               }
               
               return enemy;
-            }).filter(Boolean);
+}).filter(Boolean);
           });
           
           if (!hit) {
+            remainingProjectiles.push(projectile);
+          }
+        } else if (projectile.owner === "enemy") {
+          // Handle enemy projectile vs player collision
+          if (checkCollision(projectile, player, 1.0, 2.0)) {
+            onHealthUpdate(prev => {
+              const newHealth = Math.max(0, prev - projectile.damage);
+              if (newHealth <= 0) {
+                onGameOver();
+              }
+              return newHealth;
+            });
+            handleExplosion(projectile.x, projectile.y, projectile.z, '#ff4444');
+          } else {
             remainingProjectiles.push(projectile);
           }
         }
@@ -689,6 +731,7 @@ handleExplosion(enemy.x, enemy.y, enemy.z, enemy.color);
       return remainingProjectiles;
     });
     
+    // Update particles
     setParticles(prev => prev
       .map(p => ({
         ...p,
