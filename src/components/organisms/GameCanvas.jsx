@@ -1,19 +1,21 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, PerspectiveCamera, Stars } from "@react-three/drei";
 import * as THREE from "three";
 import { useGameLoop } from "@/hooks/useGameLoop";
 import enemyService from "@/services/api/enemyService";
 import { calculateVelocityTowardsPlayer, checkCollision, createEngineTrail, createExplosion, generateId, getRandomSpawnPosition, isOutOfBounds } from "@/utils/gameHelpers";
 // 3D Player Ship Component
-const PlayerShip = ({ position, level }) => {
+const PlayerShip = ({ position, level, pitch, yaw }) => {
   const meshRef = useRef();
   
   useFrame((state) => {
     if (meshRef.current) {
-      // Subtle floating animation
-      meshRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.5) * 0.05;
-      meshRef.current.position.y = position.y + Math.sin(state.clock.elapsedTime * 2) * 0.2;
+      // Apply player rotation from mouse input
+      meshRef.current.rotation.x = pitch;
+      meshRef.current.rotation.y = yaw;
+      // Subtle floating animation preserved but reduced
+      meshRef.current.position.y = position.y + Math.sin(state.clock.elapsedTime * 1.5) * 0.1;
     }
   });
 
@@ -248,7 +250,7 @@ const GameScene = ({
       />
       
       {/* Game objects */}
-      <PlayerShip position={player} level={gameState.level || 1} />
+<PlayerShip position={player} level={gameState.level || 1} pitch={player.pitch} yaw={player.yaw} />
       
       {enemies.map((enemy) => (
         <EnemyShip key={enemy.id} enemy={enemy} />
@@ -279,11 +281,12 @@ const GameCanvas = ({
   isPaused 
 }) => {
   const containerRef = useRef(null);
-const [player, setPlayer] = useState({ 
+  const [player, setPlayer] = useState({ 
     x: 0, y: -20, z: 0, 
     health: 100, level: 1, 
     pitch: 0, yaw: 0,
-    boost: false, boostEnergy: 100 
+    boost: false, boostEnergy: 100,
+    mouseSensitivity: 0.002
   });
   const [projectiles, setProjectiles] = useState([]);
   const [enemies, setEnemies] = useState([]);
@@ -309,7 +312,44 @@ const [player, setPlayer] = useState({
     
     loadEnemyTypes();
   }, []);
-  
+
+  // Mouse look controls component
+  const MouseControls = () => {
+    const { gl } = useThree();
+
+    useEffect(() => {
+      const handleMouseMove = (e) => {
+        if (!isPaused && document.pointerLockElement === gl.domElement) {
+          const sensitivity = player.mouseSensitivity;
+          setPlayer(prev => ({
+            ...prev,
+            yaw: prev.yaw - e.movementX * sensitivity,
+            pitch: Math.max(-Math.PI/3, Math.min(Math.PI/3, prev.pitch - e.movementY * sensitivity))
+          }));
+        }
+      };
+
+      const handleClick = () => {
+        if (!isPaused && gl.domElement) {
+          gl.domElement.requestPointerLock();
+        }
+      };
+
+      const canvas = gl.domElement;
+      if (canvas) {
+        canvas.addEventListener('mousemove', handleMouseMove);
+        canvas.addEventListener('click', handleClick);
+        return () => {
+          canvas.removeEventListener('mousemove', handleMouseMove);
+          canvas.removeEventListener('click', handleClick);
+        };
+      }
+    }, [gl.domElement, isPaused, player.mouseSensitivity]);
+
+    return null;
+  };
+
+  // Keyboard and mouse controls
 useEffect(() => {
     const handleKeyDown = (e) => {
       setKeys(prev => ({ ...prev, [e.key.toLowerCase()]: true }));
@@ -388,12 +428,12 @@ const fireProjectile = useCallback(() => {
       
       setProjectiles(prev => [...prev, {
         id: generateId(),
-        x: player.x,
+x: player.x,
         y: player.y - 2,
         z: player.z,
-        velocityX: yawSin * pitchCos * 1.2,
-        velocityY: -pitchSin * 1.2,
-        velocityZ: yawCos * pitchCos * 1.2,
+        velocityX: yawSin * pitchCos * 1.5,
+        velocityY: -pitchSin * 1.5,
+        velocityZ: yawCos * pitchCos * 1.5,
         damage: 1 + Math.floor(gameState.level / 3),
         owner: "player"
       }]);
@@ -450,7 +490,6 @@ const handleExplosion = useCallback((x, y, z, color) => {
     if (isPaused) return;
     
     const dt = Math.min(deltaTime / 16.67, 2);
-    
 setPlayer(prev => {
       let newX = prev.x;
       let newY = prev.y;
@@ -459,23 +498,28 @@ setPlayer(prev => {
       const currentLevel = gameState.level || 1;
       
       const isBoostActive = keys[" "] || keys["space"];
-      const baseSpeed = 0.5 + currentLevel * 0.05;
-      const boostMultiplier = isBoostActive && newBoostEnergy > 0 ? 2.0 : 1.0;
+      const baseSpeed = 0.8 + currentLevel * 0.15; // Increased base speed and level scaling
+      const boostMultiplier = isBoostActive && newBoostEnergy > 0 ? 2.5 : 1.0; // Increased boost multiplier
       const speed = baseSpeed * boostMultiplier;
       
-      // First-person WASD movement relative to player facing direction
+      // Enhanced 3D movement with rotation
       const yawCos = Math.cos(prev.yaw);
       const yawSin = Math.sin(prev.yaw);
+      const pitchCos = Math.cos(prev.pitch);
+      const pitchSin = Math.sin(prev.pitch);
       
       let moveX = 0, moveY = 0, moveZ = 0;
       
+      // WASD movement relative to player facing direction
       if (keys["w"]) { // Forward
-        moveX += yawSin * speed;
-        moveZ += yawCos * speed;
+        moveX += yawSin * pitchCos * speed;
+        moveY += -pitchSin * speed;
+        moveZ += yawCos * pitchCos * speed;
       }
       if (keys["s"]) { // Backward
-        moveX -= yawSin * speed;
-        moveZ -= yawCos * speed;
+        moveX -= yawSin * pitchCos * speed;
+        moveY -= -pitchSin * speed;
+        moveZ -= yawCos * pitchCos * speed;
       }
       if (keys["a"]) { // Strafe left
         moveX -= yawCos * speed;
@@ -485,33 +529,40 @@ setPlayer(prev => {
         moveX += yawCos * speed;
         moveZ -= yawSin * speed;
       }
+      if (keys["q"]) { // Up
+        moveY += speed;
+      }
+      if (keys["e"]) { // Down
+        moveY -= speed;
+      }
       
       newX += moveX;
       newY += moveY;
       newZ += moveZ;
       
-      // Handle boost energy
+      // Enhanced boost effects
       if (isBoostActive && newBoostEnergy > 0) {
-        newBoostEnergy = Math.max(0, newBoostEnergy - 2 * dt);
+        newBoostEnergy = Math.max(0, newBoostEnergy - 1.5 * dt); // Slower energy drain
         
-        // Create boost particles
+        // Enhanced boost particles with 3D positioning
         const trailParticles = createEngineTrail(
-          newX - yawSin * 3, 
-          newY + 1, 
-          newZ - yawCos * 3, 
+          newX - yawSin * pitchCos * 4, 
+          newY + pitchSin * 4 + 1, 
+          newZ - yawCos * pitchCos * 4, 
           "#00D4FF", 
-          2.0
+          2.5 // Increased intensity
         );
         setParticles(prev => [...prev, ...trailParticles]);
       } else if (!isBoostActive && newBoostEnergy < 100) {
-        newBoostEnergy = Math.min(100, newBoostEnergy + 1 * dt);
+        newBoostEnergy = Math.min(100, newBoostEnergy + 0.8 * dt); // Faster recharge
       }
       
-      // World boundaries
-      newX = Math.max(-canvasBounds.width/2 + 3, Math.min(canvasBounds.width/2 - 3, newX));
-      newY = Math.max(-canvasBounds.height/2 + 3, Math.min(canvasBounds.height/2 - 3, newY));
-      newZ = Math.max(-canvasBounds.width/2 + 3, Math.min(canvasBounds.width/2 - 3, newZ));
-      
+      // Enhanced world boundaries with Y-axis
+      const boundary = canvasBounds.width/2 - 3;
+      const yBoundary = canvasBounds.height/2 - 3;
+      newX = Math.max(-boundary, Math.min(boundary, newX));
+      newY = Math.max(-yBoundary, Math.min(yBoundary, newY));
+      newZ = Math.max(-boundary, Math.min(boundary, newZ));
       return { 
         ...prev, 
         x: newX, 
@@ -635,14 +686,15 @@ handleExplosion(enemy.x, enemy.y, enemy.z, enemy.color);
       }))
       .filter(p => p.life > 0)
     );
-  }, [
+}, [
     keys, 
     player, 
     gameState.level, 
     isPaused, 
+    mouseDown,
     fireProjectile, 
     spawnEnemy, 
-handleExplosion,
+    handleExplosion,
     onScoreUpdate,
     onHealthUpdate,
     onComboUpdate,
@@ -667,7 +719,8 @@ handleExplosion,
           powerPreference: "high-performance"
         }}
         style={{ background: "linear-gradient(135deg, #0F0F1E 0%, #1A1A2E 100%)" }}
-      >
+>
+        <MouseControls />
         <GameScene
           player={player}
           enemies={enemies}
