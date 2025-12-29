@@ -14,90 +14,99 @@ const PlayerShip = ({ position, level, pitch, yaw }) => {
       // Apply player rotation from mouse input
       meshRef.current.rotation.x = pitch;
       meshRef.current.rotation.y = yaw;
-      // Subtle floating animation preserved but reduced
-      meshRef.current.position.y = position.y + Math.sin(state.clock.elapsedTime * 1.5) * 0.1;
+      // Subtle floating animation
+      meshRef.current.position.y = position.y + Math.sin(state.clock.elapsedTime * 1.5) * 0.2;
     }
-});
+  });
 
-  const shipScale = 0.3 + (level - 1) * 0.05;
+  const shipScale = 1.0 + (level - 1) * 0.1; // Increased base scale for visibility
   const glowColor = level >= 3 ? "#00FFAA" : "#00D4FF";
 
   return (
-    <group ref={meshRef} position={[position.x, position.y, 0]} scale={[shipScale, shipScale, shipScale]}>
-      {/* Main ship body */}
+    <group ref={meshRef} position={[position.x, position.y, position.z]} scale={[shipScale, shipScale, shipScale]}>
+      {/* Main ship body - larger and more visible */}
       <mesh>
-        <boxGeometry args={[2, 6, 1.5]} />
+        <boxGeometry args={[4, 8, 2]} />
         <meshStandardMaterial
           color="#FFFFFF"
           emissive={glowColor}
-          emissiveIntensity={0.3}
+          emissiveIntensity={0.5}
           metalness={0.8}
           roughness={0.2}
         />
       </mesh>
       
-      {/* Ship nose cone */}
-      <mesh position={[0, 3.5, 0]}>
-        <coneGeometry args={[1, 3, 6]} />
+      {/* Ship nose cone - more prominent */}
+      <mesh position={[0, 4.5, 0]}>
+        <coneGeometry args={[2, 4, 8]} />
         <meshStandardMaterial
           color={glowColor}
           emissive={glowColor}
-          emissiveIntensity={0.5}
+          emissiveIntensity={0.8}
           metalness={0.6}
           roughness={0.1}
         />
       </mesh>
       
-      {/* Engine pods */}
-      <mesh position={[-1.5, -2, 0]}>
-        <cylinderGeometry args={[0.3, 0.5, 2, 8]} />
+      {/* Engine pods - more visible */}
+      <mesh position={[-2.5, -3, 0]}>
+        <cylinderGeometry args={[0.5, 0.8, 3, 8]} />
         <meshStandardMaterial
           color="#0099DD"
           emissive="#00D4FF"
-          emissiveIntensity={0.6}
+          emissiveIntensity={0.8}
           metalness={0.9}
           roughness={0.1}
         />
       </mesh>
-      <mesh position={[1.5, -2, 0]}>
-        <cylinderGeometry args={[0.3, 0.5, 2, 8]} />
+      <mesh position={[2.5, -3, 0]}>
+        <cylinderGeometry args={[0.5, 0.8, 3, 8]} />
         <meshStandardMaterial
           color="#0099DD"
           emissive="#00D4FF"
-          emissiveIntensity={0.6}
+          emissiveIntensity={0.8}
           metalness={0.9}
           roughness={0.1}
         />
       </mesh>
       
-      {/* Wings */}
-      <mesh position={[-2.5, 0, 0]} rotation={[0, 0, Math.PI / 6]}>
-        <boxGeometry args={[0.5, 4, 0.2]} />
+      {/* Wings - larger and more visible */}
+      <mesh position={[-3.5, 0, 0]} rotation={[0, 0, Math.PI / 6]}>
+        <boxGeometry args={[1, 6, 0.5]} />
         <meshStandardMaterial
           color={level >= 2 ? "#0099DD" : "#0088CC"}
+          emissive="#0099DD"
+          emissiveIntensity={0.3}
           metalness={0.7}
           roughness={0.3}
         />
       </mesh>
-      <mesh position={[2.5, 0, 0]} rotation={[0, 0, -Math.PI / 6]}>
-        <boxGeometry args={[0.5, 4, 0.2]} />
+      <mesh position={[3.5, 0, 0]} rotation={[0, 0, -Math.PI / 6]}>
+        <boxGeometry args={[1, 6, 0.5]} />
         <meshStandardMaterial
           color={level >= 2 ? "#0099DD" : "#0088CC"}
+          emissive="#0099DD"
+          emissiveIntensity={0.3}
           metalness={0.7}
           roughness={0.3}
         />
       </mesh>
       
-      {/* Shield effect */}
-      <mesh scale={[3, 3, 3]}>
-        <sphereGeometry args={[1, 16, 16]} />
-        <meshBasicMaterial
-          color="#00D4FF"
-          transparent
-          opacity={0.1}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
+      {/* Bright navigation lights for visibility */}
+      <pointLight
+        position={[0, 2, 1]}
+        color={glowColor}
+        intensity={3}
+        distance={20}
+        decay={2}
+      />
+      <pointLight
+        position={[0, -2, 1]}
+        color="#FF4500"
+        intensity={2}
+        distance={15}
+        decay={2}
+      />
     </group>
   );
 };
@@ -225,32 +234,34 @@ const GameScene = ({
   particles, 
   gameState 
 }) => {
-  return (
+return (
     <>
-      {/* Lighting */}
-      <ambientLight intensity={0.3} />
+      {/* Enhanced Lighting for better visibility */}
+      <ambientLight intensity={0.6} color="#ffffff" />
       <directionalLight
-        position={[10, 10, 5]}
-        intensity={1}
+        position={[20, 20, 10]}
+        intensity={1.5}
+        color="#ffffff"
         castShadow
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
+        shadow-mapSize-width={2048}
+        shadow-mapSize-height={2048}
       />
-      <pointLight position={[0, 0, 10]} intensity={0.5} color="#00D4FF" />
+      <pointLight position={[0, 0, 15]} intensity={1.0} color="#00D4FF" />
+      <pointLight position={[player.x, player.y, 5]} intensity={2.0} color="#ffffff" />
       
       {/* Background stars */}
       <Stars
-        radius={100}
-        depth={50}
-        count={5000}
-        factor={4}
+        radius={200}
+        depth={100}
+        count={3000}
+        factor={6}
         saturation={0}
         fade
-        speed={1}
+        speed={0.5}
       />
       
       {/* Game objects */}
-<PlayerShip position={player} level={gameState.level || 1} pitch={player.pitch} yaw={player.yaw} />
+      <PlayerShip position={player} level={gameState.level || 1} pitch={player.pitch} yaw={player.yaw} />
       
       {enemies.map((enemy) => (
         <EnemyShip key={enemy.id} enemy={enemy} />
@@ -261,11 +272,14 @@ const GameScene = ({
       ))}
       
       <ParticleSystem particles={particles} />
-{/* Camera controls */}
-<PerspectiveCamera
+      
+      {/* Camera with better positioning for player visibility */}
+      <PerspectiveCamera
         makeDefault
-        position={[player.x, player.y - 15, 18]}
-        fov={70}
+        position={[player.x, player.y - 20, 25]}
+        fov={60}
+        near={0.1}
+        far={1000}
       />
     </>
   );
@@ -279,8 +293,8 @@ const GameCanvas = ({
   onGameOver, 
   isPaused 
 }) => {
-  const [player, setPlayer] = useState({ 
-    x: 0, y: -20, z: 0, 
+const [player, setPlayer] = useState({ 
+    x: 0, y: 0, z: 0, 
     health: 100, level: 1, 
     pitch: 0, yaw: 0,
     boost: false, boostEnergy: 100,
@@ -707,18 +721,18 @@ handleExplosion(enemy.x, enemy.y, enemy.z, enemy.color);
       ref={containerRef}
       className="w-full h-full border-2 border-primary/30 rounded-lg shadow-2xl overflow-hidden cursor-crosshair"
       style={{ width: "800px", height: "600px", maxWidth: "100%" }}
-      title="Click to enable mouse look controls"
+title="Click to enable mouse look controls"
     >
       <Canvas
         shadows
-        camera={{ position: [0, 0, 50], fov: 60 }}
+        camera={{ position: [0, -20, 25], fov: 60 }}
         gl={{ 
           antialias: true, 
           alpha: false,
           powerPreference: "high-performance"
         }}
         style={{ background: "linear-gradient(135deg, #0F0F1E 0%, #1A1A2E 100%)" }}
->
+      >
         <MouseControls />
         <GameScene
           player={player}

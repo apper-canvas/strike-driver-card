@@ -49,46 +49,55 @@ export const calculateVelocityTowardsPlayer = (enemy, player, speed) => {
 export const generateId = () => {
 return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 };
-// Draw detailed rocket sprite with balanced level progression
+// Draw enhanced rocket sprite with excellent visibility and level progression
 export const drawRocket = (ctx, x, y, size, color, angle = 0, level = 1) => {
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(angle);
   
-  // Balanced level-based scaling and effects
-  const levelScale = 0.8 + (level - 1) * 0.05; // Reduced base scale
-  const glowIntensity = 12 + (level * 2); // Reduced glow intensity
+  // Enhanced level-based scaling for better visibility
+  const levelScale = 1.0 + (level - 1) * 0.08; // Increased base scale
+  const glowIntensity = 20 + (level * 4); // Enhanced glow intensity
   ctx.scale(levelScale, levelScale);
   
-  // Rocket body with progressive enhancement
+  // Main rocket body with strong visibility
   ctx.shadowBlur = glowIntensity;
   ctx.shadowColor = color;
   ctx.fillStyle = color;
-  ctx.fillRect(-size * 0.4, -size, size * 0.8, size * 1.5);
+  ctx.fillRect(-size * 0.5, -size * 1.2, size, size * 2);
   
-  // Advanced nose cone with level tiers
+  // Prominent nose cone with level tiers
   ctx.fillStyle = level >= 5 ? "#FF00FF" : level >= 3 ? "#FFAA00" : color;
+  ctx.shadowBlur = glowIntensity + 5;
+  ctx.shadowColor = ctx.fillStyle;
   ctx.beginPath();
-  ctx.moveTo(0, -size);
-  ctx.lineTo(-size * 0.4, -size * 0.6);
-  ctx.lineTo(size * 0.4, -size * 0.6);
+  ctx.moveTo(0, -size * 1.2);
+  ctx.lineTo(-size * 0.5, -size * 0.8);
+  ctx.lineTo(size * 0.5, -size * 0.8);
   ctx.closePath();
   ctx.fill();
   
-  // Enhanced fins with level progression
-  const finAlpha = Math.min(0.7 + (level * 0.15), 1.0);
+  // Enhanced wings/fins for better visibility
+  const finAlpha = Math.min(0.8 + (level * 0.1), 1.0);
   const finColor = color.includes('rgb') ? 
     color.replace('rgb', 'rgba').replace(')', `, ${finAlpha})`) : 
     `rgba(0, 212, 255, ${finAlpha})`;
   ctx.fillStyle = finColor;
-  ctx.fillRect(-size * 0.6, size * 0.3, size * 0.25, size * 0.5);
-  ctx.fillRect(size * 0.35, size * 0.3, size * 0.25, size * 0.5);
+  ctx.shadowBlur = glowIntensity;
+  ctx.fillRect(-size * 0.8, size * 0.2, size * 0.3, size * 0.8);
+  ctx.fillRect(size * 0.5, size * 0.2, size * 0.3, size * 0.8);
   
-  // Enhanced engine glow with level tiers
-  ctx.shadowBlur = 12 + (level * 3);
-  ctx.shadowColor = level >= 4 ? "#00FFAA" : color;
-  ctx.fillStyle = level >= 4 ? "#00FFAA" : color;
-  ctx.fillRect(-size * 0.3, size * 0.5, size * 0.6, size * 0.4);
+  // Bright engine glow with level progression
+  ctx.shadowBlur = 25 + (level * 5);
+  ctx.shadowColor = level >= 4 ? "#00FFAA" : "#00D4FF";
+  ctx.fillStyle = level >= 4 ? "#00FFAA" : "#00D4FF";
+  ctx.fillRect(-size * 0.4, size * 0.8, size * 0.8, size * 0.6);
+  
+  // Additional visibility enhancement - bright outline
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.shadowBlur = glowIntensity + 10;
+  ctx.strokeRect(-size * 0.5, -size * 1.2, size, size * 2);
   
   ctx.restore();
 };
