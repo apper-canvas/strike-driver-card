@@ -12,17 +12,19 @@ export const isOutOfBounds = (x, y, width, height) => {
 
 export const getRandomSpawnPosition = (width, height) => {
   const side = Math.floor(Math.random() * 4);
+  const spawnDistance = 8;
+  
   switch (side) {
     case 0: // Top
-      return { x: (Math.random() - 0.5) * width, y: height/2 + 5, z: 0 };
+      return { x: (Math.random() - 0.5) * width, y: height/2 + spawnDistance, z: 0 };
     case 1: // Right
-      return { x: width/2 + 5, y: (Math.random() - 0.5) * height, z: 0 };
+      return { x: width/2 + spawnDistance, y: (Math.random() - 0.5) * height, z: 0 };
     case 2: // Bottom
-      return { x: (Math.random() - 0.5) * width, y: -height/2 - 5, z: 0 };
+      return { x: (Math.random() - 0.5) * width, y: -height/2 - spawnDistance, z: 0 };
     case 3: // Left
-      return { x: -width/2 - 5, y: (Math.random() - 0.5) * height, z: 0 };
+      return { x: -width/2 - spawnDistance, y: (Math.random() - 0.5) * height, z: 0 };
     default:
-      return { x: (Math.random() - 0.5) * width, y: height/2 + 5, z: 0 };
+      return { x: (Math.random() - 0.5) * width, y: height/2 + spawnDistance, z: 0 };
   }
 };
 

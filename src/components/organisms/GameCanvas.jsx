@@ -265,7 +265,6 @@ const GameScene = ({
         makeDefault
         position={[player.x, player.y - 8, 12]}
         fov={75}
-        rotation={[player.pitch || 0, player.yaw || 0, 0]}
       />
     </>
   );
