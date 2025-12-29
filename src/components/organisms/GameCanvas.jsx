@@ -515,6 +515,7 @@ setPlayer(prev => {
         moveX += yawSin * pitchCos * speed;
         moveY += -pitchSin * speed;
         moveZ += yawCos * pitchCos * speed;
+}
       if (keys["s"]) { // Backward
         moveX -= yawSin * pitchCos * speed;
         moveY -= -pitchSin * speed;
