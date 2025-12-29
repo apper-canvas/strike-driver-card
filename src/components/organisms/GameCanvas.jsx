@@ -11,11 +11,12 @@ const PlayerShip = ({ position, level, pitch, yaw }) => {
   
   useFrame((state) => {
     if (meshRef.current) {
-      // Apply player rotation from mouse input
+      // Apply player position and rotation from game state
+      meshRef.current.position.set(position.x, position.y, position.z);
       meshRef.current.rotation.x = pitch;
       meshRef.current.rotation.y = yaw;
       // Subtle floating animation
-      meshRef.current.position.y = position.y + Math.sin(state.clock.elapsedTime * 1.5) * 0.2;
+      meshRef.current.position.y += Math.sin(state.clock.elapsedTime * 1.5) * 0.1;
     }
   });
 
@@ -485,12 +486,14 @@ const handleExplosion = useCallback((x, y, z, color) => {
     };
   }, []);
   
-  const updateGame = useCallback((deltaTime) => {
-if (isPaused) return;
+// Game loop integration with React Three Fiber
+  useFrame((state, delta) => {
+    if (isPaused) return;
     
+    const deltaTime = delta * 1000; // Convert to milliseconds
     const dt = Math.min(deltaTime / 16.67, 2);
     
-// Update player movement (consolidated)
+    // Update player movement (consolidated)
     setPlayer(prev => {
       let newX = prev.x;
       let newY = prev.y;
@@ -511,13 +514,12 @@ if (isPaused) return;
       let moveX = 0, moveY = 0, moveZ = 0;
       
       // WASD movement relative to player facing direction
-// WASD movement relative to player facing direction
       const speed = baseSpeed * boostMultiplier * dt;
       if (keys["w"]) { // Forward
         moveX += yawSin * pitchCos * speed;
         moveY += -pitchSin * speed;
         moveZ += yawCos * pitchCos * speed;
-}
+      }
       if (keys["s"]) { // Backward
         moveX -= yawSin * pitchCos * speed;
         moveY -= -pitchSin * speed;
@@ -559,12 +561,13 @@ if (isPaused) return;
         newBoostEnergy = Math.min(100, newBoostEnergy + 0.8 * dt); // Faster recharge
       }
       
-// Enhanced world boundaries with Y-axis
+      // Enhanced world boundaries with Y-axis
       const boundary = canvasBounds.width/2 - 5;
       const yBoundary = canvasBounds.height/2 - 5;
       newX = Math.max(-boundary, Math.min(boundary, newX));
       newY = Math.max(-yBoundary, Math.min(yBoundary, newY));
       newZ = Math.max(-boundary, Math.min(boundary, newZ));
+      
       return { 
         ...prev, 
         x: newX, 
@@ -576,7 +579,7 @@ if (isPaused) return;
       };
     });
     
-// Handle shooting
+    // Handle shooting
     if (mouseDown) {
       fireProjectile();
     }
@@ -601,7 +604,7 @@ if (isPaused) return;
       lastEnemySpawn.current = now;
     }
     
-// Update enemies and handle enemy shooting
+    // Update enemies and handle enemy shooting
     setEnemies(prev => {
       let updatedEnemies = prev.map(enemy => {
         // Update enemy position
@@ -663,11 +666,12 @@ if (isPaused) return;
       return updatedEnemies;
     });
     
+    // Handle projectile collisions
     setProjectiles(prev => {
       const remainingProjectiles = [];
       const hitEnemyIds = new Set();
       
-prev.forEach(projectile => {
+      prev.forEach(projectile => {
         if (projectile.owner === "player") {
           let hit = false;
           
@@ -705,7 +709,7 @@ prev.forEach(projectile => {
               }
               
               return enemy;
-}).filter(Boolean);
+            }).filter(Boolean);
           });
           
           if (!hit) {
@@ -742,7 +746,12 @@ prev.forEach(projectile => {
       }))
       .filter(p => p.life > 0)
     );
-}, [
+  });
+
+  const updateGame = useCallback((deltaTime) => {
+    // This function is now integrated into useFrame above
+    // Keeping for compatibility but functionality moved to useFrame
+  }, [
     keys, 
     player, 
     gameState.level, 
