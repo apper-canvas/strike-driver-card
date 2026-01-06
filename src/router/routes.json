@@ -1,0 +1,98 @@
+{
+  "/": {
+    "allow": {
+      "when": {
+        "conditions": [
+          {
+            "label": "Public game access",
+            "rule": "public"
+          }
+        ]
+      }
+    }
+  },
+  "/login": {
+    "allow": {
+      "when": {
+        "conditions": [
+          {
+            "label": "Public login access",
+            "rule": "public"
+          }
+        ]
+      }
+    }
+  },
+  "/signup": {
+    "allow": {
+      "when": {
+        "conditions": [
+          {
+            "label": "Public signup access",
+            "rule": "public"
+          }
+        ]
+      }
+    }
+  },
+  "/callback": {
+    "allow": {
+      "when": {
+        "conditions": [
+          {
+            "label": "Public callback access",
+            "rule": "public"
+          }
+        ]
+      }
+    }
+  },
+  "/error": {
+    "allow": {
+      "when": {
+        "conditions": [
+          {
+            "label": "Public error access",
+            "rule": "public"
+          }
+        ]
+      }
+    }
+  },
+  "/access-denied": {
+    "allow": {
+      "when": {
+        "conditions": [
+          {
+            "label": "Public access denied access",
+            "rule": "public"
+          }
+        ]
+      }
+    }
+  },
+  "/reset-password/*": {
+    "allow": {
+      "when": {
+        "conditions": [
+          {
+            "label": "Public password reset access",
+            "rule": "public"
+          }
+        ]
+      }
+    }
+  },
+  "/prompt-password/*": {
+    "allow": {
+      "when": {
+        "conditions": [
+          {
+            "label": "Public password prompt access",
+            "rule": "public"
+          }
+        ]
+      }
+    }
+  }
+}

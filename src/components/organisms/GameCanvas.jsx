@@ -315,13 +315,15 @@ const [enemyTypes, setEnemyTypes] = useState([]);
   const containerRef = useRef();
   const canvasBounds = { width: 80, height: 60 }; // 3D world coordinates
   
-  useEffect(() => {
+useEffect(() => {
     const loadEnemyTypes = async () => {
       try {
         const types = await enemyService.getAll();
         setEnemyTypes(types);
       } catch (error) {
         console.error("Failed to load enemy types:", error);
+        // Fallback to prevent game breaking
+        setEnemyTypes([]);
       }
     };
     
